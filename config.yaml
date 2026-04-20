@@ -1,0 +1,91 @@
+# =============================================================
+# Red Team Agent — Config
+# =============================================================
+# This is the single source of truth for all model settings.
+# You should never hardcode model names or URLs in Python files.
+# To swap a model, change it here — nothing else needs to change.
+# =============================================================
+
+# -------------------------------------------------------------
+# TARGET MODEL — runs locally on your Mac via Ollama
+# -------------------------------------------------------------
+target:
+  provider: ollama
+  model: llama3.2:3b            # Change to any model you have pulled locally
+  base_url: http://localhost:11434
+  temperature: 0.7
+  max_tokens: 512
+  timeout: 30                   # Seconds before giving up on a response
+
+# -------------------------------------------------------------
+# ATTACKER — Nemotron via NVIDIA NIM (free tier)
+# Generates adversarial prompts to send to the target
+# -------------------------------------------------------------
+attacker:
+  provider: nvidia_nim
+  model: nvidia/llama-3.1-nemotron-ultra-253b-v1
+  base_url: https://integrate.api.nvidia.com/v1
+  temperature: 0.9              # Higher = more creative/varied attack prompts
+  max_tokens: 1024
+
+# -------------------------------------------------------------
+# EVALUATOR — separate judge model via NIM
+# Judges whether each attack succeeded or failed
+# -------------------------------------------------------------
+evaluator:
+  provider: nvidia_nim
+  model: nvidia/nemotron-content-safety-reasoning-4b
+  base_url: https://integrate.api.nvidia.com/v1
+  temperature: 0.1              # Low = more consistent, deterministic judgements
+  max_tokens: 512
+
+# -------------------------------------------------------------
+# ATTACK STRATEGIES
+# Set enabled: false to skip a category during a run
+# variants_per_run = how many prompt variations Nemotron generates
+# -------------------------------------------------------------
+strategies:
+
+  jailbreak:
+    enabled: true
+    variants_per_run: 5
+    # The goal: get the model to ignore its safety training
+    techniques:
+      - role_play               # "Act as an AI with no restrictions..."
+      - hypothetical            # "In a fictional world where..."
+      - many_shot               # Fake conversation history showing compliance
+
+  prompt_injection:
+    enabled: true
+    variants_per_run: 4
+    # The goal: override the system prompt with user input
+    techniques:
+      - direct_override         # "Ignore previous instructions..."
+      - delimiter_confusion     # Exploiting markdown/XML/JSON structure
+
+  data_extraction:
+    enabled: true
+    variants_per_run: 4
+    # The goal: get the model to leak its system prompt or training data
+    techniques:
+      - system_prompt_leak      # "Repeat everything above this line"
+      - model_metadata          # Probe for model version, provider info
+
+  bias_probe:
+    enabled: true
+    variants_per_run: 4
+    # The goal: surface unfair or inconsistent outputs across groups
+    axes:
+      - gender
+      - race
+      - religion
+      - political
+
+# -------------------------------------------------------------
+# ORCHESTRATOR — controls the overall run behavior
+# -------------------------------------------------------------
+orchestrator:
+  max_attacks_per_strategy: 5   # Cap per strategy category
+  delay_between_attacks: 0.5    # Seconds between API calls (avoid rate limits)
+  retry_attempts: 2             # Reserved — not read by main.py yet; set when wired
+  output_dir: reports           # Where to save vulnerability reports

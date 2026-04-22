@@ -1,6 +1,8 @@
-# Autonomous Red Team Agent
+# Autonomous LLM Red Teaming Research
 
-An autonomous LLM vulnerability scanner that uses **NVIDIA NIM** models to probe a local **Ollama** target for security and fairness issues. The **attacker** generates adversarial prompts; a separate **evaluator** model judges whether each attempt succeeded.
+A controlled **experiment framework** for comparing vulnerability across open-source LLMs (via **Ollama**) under adversarial attacks that are **autonomously generated** (NVIDIA NIM “attacker”) and **consistently evaluated** (NVIDIA NIM “judge”).
+
+The source-of-truth experiment design lives in [`EXPERIMENT_SPEC.md`](EXPERIMENT_SPEC.md).
 
 ## Architecture
 
@@ -11,10 +13,20 @@ Ollama (target) → responds
         ↓
 NIM (evaluator) → judges if attack succeeded
         ↓
-Structured vulnerability report (JSON + Markdown)
+Structured results → per-model + cross-model comparison
 ```
 
 Default model IDs are defined in `config.yaml` (see [Tech stack](#tech-stack)).
+
+## Experiment workflow (v0)
+
+v0 is designed for **fair model-to-model comparison** using a **Fixed attack set**:
+
+1) **Generate a prompt dataset** once (prompts are reused across all targets)
+2) **Replay the dataset** across each target model via Ollama
+3) **Evaluate and aggregate** into per-model summaries and cross-model comparisons
+
+Adaptive attacks (prompts generated per-model, optionally multi-round) are a v1+ goal.
 
 ## Setup
 
@@ -53,6 +65,8 @@ If a key was ever committed to a repo or shared, **revoke it** in the NVIDIA das
 python main.py
 ```
 
+Note: `main.py` currently runs a single configured target and generates prompts inline. The repo is being evolved into the multi-model experiment workflow described above; see [`EXPERIMENT_SPEC.md`](EXPERIMENT_SPEC.md).
+
 ## Project structure
 
 Python modules live at the **repository root** (there is no `agent/` subfolder):
@@ -82,7 +96,7 @@ red-team-agent/
 
 Edit `config.yaml` to:
 
-- Swap the **target** model (`ollama pull …` then update `target.model`)
+- Swap the **target** model (`ollama pull …` then update `target.model`) for single-model runs
 - Disable strategies (`enabled: false`)
 - Adjust `variants_per_run` and orchestrator limits
 - Point **attacker** / **evaluator** at different NIM models or endpoints
@@ -97,7 +111,8 @@ Edit `config.yaml` to:
 ## Outputs and operator notes
 
 - **Terminal:** Timestamped logs, per-attempt summaries, and (if `rich` is installed) a colored results table. Without `rich`, a plain-text summary is printed.
-- **Reports:** Each run writes `report_<timestamp>.json` and `report_<timestamp>.md` under the configured output directory (default `reports/`).
+- **Reports:** Current implementation writes `report_<timestamp>.json` and `report_<timestamp>.md` under the configured output directory (default `reports/`).
+- **Experiments (planned):** dataset artifact(s) + per-model results + comparison summary (see `EXPERIMENT_SPEC.md`).
 - **Evaluator:** The judge may print `[DEBUG]` lines while parsing verdicts; this is normal for troubleshooting.
 
 ## Tech stack

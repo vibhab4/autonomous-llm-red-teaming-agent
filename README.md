@@ -28,6 +28,24 @@ v0 is designed for **fair model-to-model comparison** using a **Fixed attack set
 
 Adaptive attacks (prompts generated per-model, optionally multi-round) are a v1+ goal.
 
+### Fixed-mode commands (current)
+
+1) Generate a fixed prompt dataset:
+
+```bash
+python generate_dataset.py --n-per-combo 1
+```
+
+2) Replay that dataset across target models (Ollama) and evaluate each attempt:
+
+```bash
+python run_fixed_experiment.py \
+  --dataset datasets/attacks_<dataset_id>.jsonl \
+  --models llama3.2:3b,mistral:7b,gemma2:2b
+```
+
+This writes per-attempt JSONL to `results/fixed_results_<run_id>.jsonl` by default.
+
 ## Setup
 
 ### 1. Clone and install dependencies
